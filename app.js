@@ -35,3 +35,5 @@ $('resetDiagram').onclick=()=>{
  lock(false);draw();
  $('status').textContent='Diagramm zurückgesetzt. Bereits notierte Tabellenwerte bleiben erhalten.';
 };
+
+$('clearValues').onclick=()=>{rows=[];$('records').replaceChildren();};
