@@ -25,3 +25,13 @@ $('reset').onclick=()=>{if(confirm('Alle Messwerte löschen und mit unmagnetisie
 
 
 $('negativeTop').onclick=()=>$('negative').click();$('positiveTop').onclick=()=>$('positive').click();
+
+$('resetDiagram').onclick=()=>{
+ clearInterval(timer);timer=null;i=0;b=0;stage=0;target=0;branch='virgin';done=null;
+ paths={virgin:[[0,0]],down:[],up:[]};
+ $('advance').textContent='Strom erhöhen → 6 A';$('pause').textContent='Pause';
+ $('reverseControls').hidden=true;
+ state('START · UNMAGNETISIERTER KERN','Magnetisieren Sie den Kern.','Vermuten Sie: Welche Flussdichte bleibt nach dem Abschalten übrig?');
+ lock(false);draw();
+ $('status').textContent='Diagramm zurückgesetzt. Bereits notierte Tabellenwerte bleiben erhalten.';
+};
