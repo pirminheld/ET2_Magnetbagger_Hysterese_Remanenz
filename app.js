@@ -4,13 +4,14 @@ const M=1.65*Math.tanh(3),lo=Math.tanh(-5/1.8),hi=Math.tanh(7/1.8);
 const down=i=>M*(2*(Math.tanh((i+1)/1.8)-lo)/(hi-lo)-1)+.012*i;
 const up=i=>-down(-i),virgin=i=>1.65*Math.tanh(i/2)+.012*i;
 let left=-3,right=0;for(let n=0;n<60;n++){let mid=(left+right)/2;if(down(mid)>0)right=mid;else left=mid;}const coercive=(left+right)/2;
+let explanationVisible=false;
 let i=0,b=0,stage=0,timer=null,target=0,branch='virgin',done=null,rows=[];
 let paths={virgin:[[0,0]],down:[],up:[]};const funcs={virgin,down,up},colors={virgin:'#8798a1',down:'#0c7477',up:'#b66c27'};
 function draw(){ $('ival').textContent=fmt(i)+' A';$('bval').textContent=fmt(b)+' T';$('fieldDirection').textContent=Math.abs(i)<.001?'Äußeres Feld der Spule: ausgeschaltet':('Äußeres Feld der Spule: '+(i>0?'→':'←'));let s='<rect x="10" y="20" width="500" height="165" rx="12" fill="#e4ebee"/>';const j=b-.012*i;for(let k=0;k<32;k++){const x=40+(k%8)*63,y=43+Math.floor(k/8)*41;const a=(j<0?180:0)+(1-Math.min(1,Math.abs(j)/M))*((k*137.5)%360-180);s+=`<g transform="translate(${x} ${y}) rotate(${a})"><path d="M-15 0H15M8 -6L15 0L8 6" fill="none" stroke="#0c7477" stroke-width="3"/></g>`;}$('core').innerHTML=s;
 const X=x=>290+x*40,Y=y=>200-y*82;s='';for(let v=-2;v<=2;v+=.5){const y=Y(v);s+=`<path d="M50 ${y}H540" stroke="#dce6e9"/><text x="40" y="${y+5}" text-anchor="end" font-size="14">${fmt(v)}</text>`;}for(let x=-6;x<=6;x+=2)s+=`<text x="${X(x)}" y="390" text-anchor="middle" font-size="14">${x}</text>`;s+='<path d="M50 200H545M290 28V370" stroke="#183544" stroke-width="2"/><text x="18" y="20" font-size="17">B in T</text><text x="510" y="410" font-size="17">I in A</text>';
 for(const key of ['virgin','down','up']){const a=paths[key];s+=`<polyline points="${a.map(([x,y])=>`${X(x)},${Y(y)}`).join(' ')}" stroke="${colors[key]}" fill="none" stroke-width="3" ${key==='up'?'stroke-dasharray="8 5"':''}/>`;if(a.length>20){const q=a[Math.floor(a.length*.6)],r=a[Math.floor(a.length*.6)-3],angle=Math.atan2(Y(q[1])-Y(r[1]),X(q[0])-X(r[0]))*180/Math.PI;s+=`<path d="M-8 -5L0 0L-8 5" transform="translate(${X(q[0])} ${Y(q[1])}) rotate(${angle})" stroke="${colors[key]}" fill="none" stroke-width="3"/>`;}}
-s+=`<circle cx="${X(i)}" cy="${Y(b)}" r="6" fill="#183544" stroke="white" stroke-width="2"/>`;$('graph').innerHTML=s;}
-function lock(running){$('advance').disabled=running||stage>=2;$('pause').disabled=!running;$('smallReverse').disabled=running;$('zeroB').disabled=running;$('negative').disabled=running||stage!==3;$('positive').disabled=running||stage!==4;$('loopControls').hidden=stage<3||stage>4;$('negativeTop').hidden=stage!==3;$('positiveTop').hidden=stage!==4;$('negativeTop').disabled=running||stage!==3;$('positiveTop').disabled=running||stage!==4;}
+s+=`<circle cx="${X(i)}" cy="${Y(b)}" r="6" fill="#183544" stroke="white" stroke-width="2"/>`;$('graph').innerHTML=s;if(explanationVisible)annotateLoop();}
+function lock(running){$('explainLoop').hidden=stage!==5;$('advance').disabled=running||stage>=2;$('pause').disabled=!running;$('smallReverse').disabled=running;$('zeroB').disabled=running;$('negative').disabled=running||stage!==3;$('positive').disabled=running||stage!==4;$('loopControls').hidden=stage<3||stage>4;$('negativeTop').hidden=stage!==3;$('positiveTop').hidden=stage!==4;$('negativeTop').disabled=running||stage!==3;$('positiveTop').disabled=running||stage!==4;}
 function tick(){const d=target-i;if(Math.abs(d)<=.05){i=target;b=funcs[branch](i);paths[branch].push([i,b]);clearInterval(timer);timer=null;draw();done();lock(false);return;}i+=Math.sign(d)*.05;b=funcs[branch](i);paths[branch].push([i,b]);draw();}
 function move(t,k,callback){if(timer)return;target=t;branch=k;done=callback;if(!paths[k].length)paths[k].push([i,b]);lock(true);$('pause').textContent='Pause';timer=setInterval(tick,15);}
 function state(label,title,task){$('stageLabel').textContent=label;$('stageTitle').textContent=title;$('task').textContent=task;$('status').textContent=title;}
@@ -27,7 +28,7 @@ $('reset').onclick=()=>{if(confirm('Alle Messwerte löschen und mit unmagnetisie
 $('negativeTop').onclick=()=>$('negative').click();$('positiveTop').onclick=()=>$('positive').click();
 
 $('resetDiagram').onclick=()=>{
- clearInterval(timer);timer=null;i=0;b=0;stage=0;target=0;branch='virgin';done=null;
+ explanationVisible=false;$('loopExplanation').hidden=true;$('explainLoop').textContent='Hystereseschleife erklären';$('explainLoop').setAttribute('aria-expanded','false');clearInterval(timer);timer=null;i=0;b=0;stage=0;target=0;branch='virgin';done=null;
  paths={virgin:[[0,0]],down:[],up:[]};
  $('advance').textContent='Strom erhöhen → 6 A';$('pause').textContent='Pause';
  $('reverseControls').hidden=true;
@@ -37,3 +38,19 @@ $('resetDiagram').onclick=()=>{
 };
 
 $('clearValues').onclick=()=>{rows=[];$('records').replaceChildren();};
+
+function annotateLoop(){
+ const stations=[[6,virgin(6),510,35],[0,down(0),325,110],[coercive,0,200,175],[-6,down(-6),75,365],[0,up(0),325,295],[-coercive,0,380,230]];
+ $('graph').insertAdjacentHTML('beforeend',stations.map(([x,y,lx,ly],k)=>`<g><path d="M${290+x*40} ${200-y*82}L${lx} ${ly}" stroke="#183544"/><circle cx="${290+x*40}" cy="${200-y*82}" r="4" fill="#183544"/><circle cx="${lx}" cy="${ly}" r="13" fill="white" stroke="#183544" stroke-width="2"/><text x="${lx}" y="${ly+5}" text-anchor="middle" font-size="16" font-weight="bold">${k+1}</text></g>`).join(''));
+}
+function magnetPicture(level){let out='<svg viewBox="0 0 180 80" role="img" aria-label="Schematisches Magnetisierungsmodell">';for(let k=0;k<12;k++){const x=20+k%6*28,y=22+Math.floor(k/6)*36;const angles=level===0?[0,180,90,270,45,225,135,315,30,210,60,240]:null;const angle=angles?angles[k]:(level<0?180:0)+(Math.abs(level)===1?0:(k%3-1)*60);out+=`<path d="M-9 0H9M3 -5L9 0L3 5" transform="translate(${x} ${y}) rotate(${angle})" fill="none" stroke="#0c7477" stroke-width="2.5"/>`;}return out+'</svg>';}
+const stationTexts=[
+ ['Sättigungsbereich',1,'Bei +6 A ist die Magnetisierung weitgehend gleichgerichtet. Die Flussdichte steigt bei mehr Strom nur noch wenig.'],
+ ['Positive Remanenz',.5,'Nach dem Abschalten: I = 0 A, aber B ≈ +0,83 T. Ein Teil der Magnetisierung bleibt erhalten.'],
+ ['B = 0 bei Gegenstrom',0,'Bei etwa −1 A bringt das Gegenfeld die Flussdichte auf null. Der Gegenstrom ist dabei noch eingeschaltet.'],
+ ['Sättigung in Gegenrichtung',-1,'Bei −6 A ist die Magnetisierung weitgehend in die entgegengesetzte Richtung ausgerichtet.'],
+ ['Negative Remanenz',-.5,'Auf dem Rückweg: I = 0 A, aber B ≈ −0,83 T. Der zuvor negative Strom hat den Kern anders magnetisiert.'],
+ ['Erneut B = 0',0,'Auf dem Rückweg wird bei etwa +1 A die Flussdichte null. Weiterer positiver Strom führt zurück zu Punkt 1.']
+];
+$('loopCards').innerHTML=stationTexts.map(([title,level,body],k)=>`<div class="station-card"><strong>${k+1} · ${title}</strong>${magnetPicture(level)}<p>${body}</p></div>`).join('');
+$('explainLoop').onclick=()=>{if(stage!==5)return;explanationVisible=!explanationVisible;$('loopExplanation').hidden=!explanationVisible;$('explainLoop').setAttribute('aria-expanded',String(explanationVisible));$('explainLoop').textContent=explanationVisible?'Erklärung ausblenden':'Hystereseschleife erklären';draw();};
